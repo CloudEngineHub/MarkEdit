@@ -20,7 +20,6 @@ final class EditorDocument: NSDocument {
   var stringValue = ""
   var formatCompleted = false // The result of format content is all good
   var isOutdated = false // The content is outdated, needs an update
-  var isWritingToFile = false
   var isReadOnlyMode = false
   var isTerminating = false
 
@@ -122,23 +121,21 @@ final class EditorDocument: NSDocument {
   }
 
   func saveContent(sender: Any? = nil, userInitiated: Bool = false, completion: (() -> Void)? = nil) {
-    let saveAction = {
-      DispatchQueue.main.executeDelayed {
+    Task { @MainActor in
+      let saveAction = {
         super.save(sender)
-        self.isWritingToFile = false
         completion?()
       }
 
-      if sender != nil {
-        self.hostViewController?.cancelCompletion()
-      }
-    }
+      if isOutdated || (userInitiated && needsFormatting) {
+        updateContent(userInitiated: userInitiated, saveAction: saveAction)
+      } else {
+        saveAction()
 
-    isWritingToFile = true
-    if isOutdated || (userInitiated && needsFormatting) {
-      updateContent(userInitiated: userInitiated, saveAction: saveAction)
-    } else {
-      saveAction()
+        if userInitiated {
+          markContentClean()
+        }
+      }
     }
   }
 
@@ -221,14 +218,11 @@ extension EditorDocument {
     }()
 
     let canClose = {
-      // Run async to work around a rare hang issue
-      DispatchQueue.main.executeDelayed {
-        super.canClose(
-          withDelegate: delegate,
-          shouldClose: shouldClose,
-          contextInfo: contextInfo
-        )
-      }
+      super.canClose(
+        withDelegate: delegate,
+        shouldClose: shouldClose,
+        contextInfo: contextInfo
+      )
     }
 
     // Closing a new document, force sync to make sure the content is propagated.
@@ -247,7 +241,9 @@ extension EditorDocument {
     }
 
     // General cases
-    canClose()
+    Task { @MainActor in
+      canClose()
+    }
   }
 
   override func close() {
@@ -329,6 +325,12 @@ extension EditorDocument {
   //
   // Note that, by only overriding the "saveToURL" method can bring hang issues.
   override func save(_ sender: Any?) {
+    guard isOutdated || needsFormatting else {
+      super.save(sender)
+      markContentClean()
+      return
+    }
+
     saveContent(sender: sender, userInitiated: true)
   }
 
@@ -344,14 +346,6 @@ extension EditorDocument {
     if !hasBeenReverted && isTerminating && hasUnautosavedChanges, let fileURL, let fileType {
       try? writeSafely(to: fileURL, ofType: fileType, for: .autosaveAsOperation)
       fileModificationDate = .now // Prevent immediate presentedItemDidChange calls
-    }
-
-    // When "Ask to keep changes when closing documents" is enabled,
-    // changes are asked to save explicitly, see also "confirmsChanges(_:shouldClose:)".
-    //
-    // The value can from either system settings or app level overwritten.
-    guard !closeAlwaysConfirmsChanges else {
-      return
     }
 
     Task { @MainActor in
@@ -615,6 +609,12 @@ private extension EditorDocument {
 
     if let editorText = await hostViewController?.editorText {
       stringValue = editorText
+
+      DispatchQueue.global(qos: .utility).async {
+        let fileData = editorText.toData() ?? Data()
+        let directory = AppCustomization.debugDirectory.fileURL
+        try? fileData.write(to: directory.appending(path: "last-edited.md"))
+      }
     }
 
     // If the content contains headings, use the first one to override the displayName
@@ -628,8 +628,12 @@ private extension EditorDocument {
     unblockUserInteraction()
 
     if userInitiated {
-      bridge?.history.markContentClean()
+      markContentClean()
     }
+  }
+
+  func markContentClean() {
+    bridge?.history.markContentClean()
   }
 
   @objc func confirmsChanges(_ document: EditorDocument, shouldClose: Bool) {
@@ -662,11 +666,5 @@ private extension EditorDocument {
       // Saved
       document.saveContent(userInitiated: true, completion: closeDelayed)
     }
-  }
-}
-
-private extension DispatchQueue {
-  func executeDelayed(_ execute: @escaping () -> Void) {
-    asyncAfter(deadline: .now() + 0.05, execute: execute)
   }
 }
