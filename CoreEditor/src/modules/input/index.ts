@@ -1,6 +1,7 @@
 import { EditorView } from '@codemirror/view';
 import { EditorSelection, Transaction } from '@codemirror/state';
 import { foldEffect, unfoldEffect } from '@codemirror/language';
+import { startCompletion as startTooltipCompletion } from '@codemirror/autocomplete';
 import { globalState, editingState } from '../../common/store';
 import { clearSyntaxSelections } from '../commands';
 import { startCompletion, isPanelVisible } from '../completion';
@@ -63,7 +64,7 @@ export function wordTokenizer() {
 export function interceptInputs() {
   const marksToWrap = ['*', '_', '~', '$'];
 
-  return EditorView.inputHandler.of((editor, _from, _to, insert) => {
+  return EditorView.inputHandler.of((editor, from, to, insert) => {
     // Enable auto character pairs only after composition ends,
     // some characters act as marked text in certain languages, e.g., typing '`' followed by 'a' to input 'à'.
     const autoCharacterPairs = window.config.autoCharacterPairs && editingState.compositionEnded;
@@ -84,6 +85,11 @@ export function interceptInputs() {
     } else if (isPanelVisible()) {
       // Cancel the completion for whitespace insertions
       window.nativeModules.completion.cancelCompletion();
+    }
+
+    // Try tooltip completion if selection is replaced
+    if (from !== to && insert.length > 0) {
+      setTimeout(() => startTooltipCompletion(editor), 200);
     }
 
     // Fallback to default behavior
