@@ -21,6 +21,7 @@ import { history, historyKeymap } from './@vendor/commands/history';
 import { loadTheme } from './styling/themes';
 import { classHighlighters, markdownExtensions, markdownExtendedData, renderExtensions, actionExtensions } from './styling/markdown';
 import { lineIndicatorLayer } from './styling/nodes/line';
+import { linkStyles } from './styling/nodes/link';
 import { paragraphIndentStyle, lineIndentStyle } from './styling/nodes/indent';
 import { gutterExtensions } from './styling/nodes/gutter';
 import { IndentBehavior } from './config';
@@ -30,7 +31,7 @@ import { localizePhrases } from './modules/localization';
 import { indentationKeymap } from './modules/indentation';
 import { filterTransaction, wordTokenizer, observeChanges, interceptInputs } from './modules/input';
 import { customizedCommandsKeymap } from './modules/commands';
-import { customCompletionData } from './modules/completion';
+import { standardLinkCompletion, referenceLinkCompletion } from './modules/completion';
 import { tocKeymap } from './modules/toc';
 import { userExtensions, userMarkdownConfigs, userCodeLanguages } from './api/methods';
 
@@ -139,7 +140,8 @@ export function extensions(options: { lineBreak?: string }) {
     // Markdown
     markdownConfigurator.of(markdownConfigurations()),
     markdownLanguage.data.of(markdownExtendedData),
-    markdownLanguage.data.of(customCompletionData),
+    markdownLanguage.data.of(standardLinkCompletion),
+    markdownLanguage.data.of(referenceLinkCompletion),
 
     // Enable autocomplete from language data
     autocompletion({
@@ -153,7 +155,8 @@ export function extensions(options: { lineBreak?: string }) {
     theme.of(loadTheme(window.config.theme)),
     renderExtensions,
     actionExtensions,
-    invisibles.of([]), // Lower priority to have line breaks at the end
+    invisibles.of([]), // Must after actionExtensions to have line breaks at the end
+    linkStyles, // Must after invisibles because whitespaces can break this
     selectedLines.of([]),
 
     // Input handling
