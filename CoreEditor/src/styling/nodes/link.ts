@@ -37,14 +37,12 @@ const standardStyle = createDecoPlugin(() => {
       const spec = createSpec();
       const deco = Decoration.mark(spec);
 
-      // HTML links (6) and Markdown links (4), only decorate a portion of the match
-      for (const index of [6, 4]) {
-        if (match[index]) {
-          return add(from + match[index].length, to - 1, deco);
-        }
+      // HTML links, only decorate a portion of the match
+      if (match[6]) {
+        return add(from + match[6].length, to - 1, deco);
       }
 
-      // Normal links, decorate the full match
+      // Markdown links and normal URL literals, decorate the full match
       add(from, to, deco);
     },
   });
@@ -198,7 +196,7 @@ function followReference(element: HTMLElement, type: string) {
   const label = element.getAttribute('data-link-label')?.toLowerCase() ?? '';
   const isDefinition = (pos: number) => state.sliceDoc(pos, pos + 1) === ':';
 
-  return scrollIntoTarget(getNodesNamed(state, type).find(node => {
+  return scrollIntoTarget(getNodesNamed(state, [type, 'LinkLabel']).find(node => {
     // Ignore the node that triggered the event
     if (node.to >= from && node.from <= to) {
       return false;
