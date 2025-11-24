@@ -34,18 +34,28 @@ const standardStyle = createDecoPlugin(() => {
     regexp: regexp.standard,
     boundary: /\S/,
     decorate: (add, from, to, match) => {
-      const spec = createSpec();
-      const deco = Decoration.mark(spec);
+      const createDeco = (attributes?: { [key: string]: string }) => {
+        return Decoration.mark(createSpec(attributes));
+      };
 
-      // HTML links (6) and Markdown links (4), only decorate a portion of the match
-      for (const index of [6, 4]) {
-        if (match[index]) {
-          return add(from + match[index].length, to - 1, deco);
+      // HTML links, only decorate the url part
+      if (match[6]) {
+        return add(from + match[6].length, to - 1, createDeco());
+      }
+
+      // Markdown links
+      if (match[4]) {
+        // Decorate the full match and add the url as an attribute
+        if (match[5]) {
+          return add(from, to, createDeco({ 'data-link-url': match[5] }));
         }
+
+        // Usually speaking, this should not happen
+        return add(from + match[4].length, to - 1, createDeco());
       }
 
       // Normal links, decorate the full match
-      add(from, to, deco);
+      add(from, to, createDeco());
     },
   });
 
@@ -56,7 +66,7 @@ const standardStyle = createDecoPlugin(() => {
  * For `[^footnote]` and `[reference][link]`.
  */
 const referenceStyle = createDecoPlugin(() => {
-  return createDecos('Link', ({ from, to }) => {
+  return createDecos(['Link', 'LinkDefinition'], ({ from, to }) => {
     const content = window.editor.state.sliceDoc(from, to);
     const newDeco = (type: 'Link' | 'LinkLabel', label: string) => Decoration.mark(createSpec({
       'data-link-type': type,
@@ -135,8 +145,8 @@ export function handleMouseUp(event: MouseEvent) {
   }
 
   // [^footnote] or [reference][link]
-  const type = element.getAttribute('data-link-type');
-  if (type !== null) {
+  const type = element.dataset.linkType;
+  if (type !== undefined) {
     return followReference(element, type);
   }
 
@@ -171,7 +181,7 @@ function extractLink(target: EventTarget | null) {
 
   // It's OK to have a trailing period in a valid url,
   // but generally it's the end of a sentence and we want to remove the period.
-  const link = element.innerText;
+  const link = element.dataset.linkUrl ?? element.innerText;
   if (link.endsWith('.') === true && link.endsWith('..') !== true) {
     return { element, link: link.slice(0, -1) };
   }
@@ -193,12 +203,12 @@ function createSpec(attributes?: { [key: string]: string }) {
 
 function followReference(element: HTMLElement, type: string) {
   const state = window.editor.state;
-  const from = parseInt(element.getAttribute('data-link-from') ?? '0');
-  const to = parseInt(element.getAttribute('data-link-to') ?? '0');
-  const label = element.getAttribute('data-link-label')?.toLowerCase() ?? '';
+  const from = parseInt(element.dataset.linkFrom ?? '0');
+  const to = parseInt(element.dataset.linkTo ?? '0');
+  const label = element.dataset.linkLabel?.toLowerCase() ?? '';
   const isDefinition = (pos: number) => state.sliceDoc(pos, pos + 1) === ':';
 
-  return scrollIntoTarget(getNodesNamed(state, [type, 'LinkLabel']).find(node => {
+  return scrollIntoTarget(getNodesNamed(state, [type, 'LinkLabel', 'LinkDefinition']).find(node => {
     // Ignore the node that triggered the event
     if (node.to >= from && node.from <= to) {
       return false;
