@@ -5059,9 +5059,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"markedit-api@https://github.com/MarkEdit-app/MarkEdit-api#v0.18.0":
-  version: 0.18.0
-  resolution: "markedit-api@https://github.com/MarkEdit-app/MarkEdit-api.git#commit=4fe9abf812a35be6851801cb91b95b5a5cf48f41"
+"markedit-api@https://github.com/MarkEdit-app/MarkEdit-api#v0.20.0":
+  version: 0.20.0
+  resolution: "markedit-api@https://github.com/MarkEdit-app/MarkEdit-api.git#commit=9cba195b6b08b5373ba62eaa4a1f911da1ab14e2"
   peerDependencies:
     "@codemirror/autocomplete": ^6.0.0
     "@codemirror/commands": ^6.0.0
@@ -5074,7 +5074,7 @@ __metadata:
     "@lezer/highlight": ^1.0.0
     "@lezer/lr": ^1.0.0
     "@lezer/markdown": ^1.0.0
-  checksum: 10c0/76971ec64166fd26a84a48c4b77919d3e7882f1ce00153190b7c45a9d9766ca248df151139fc7da926bceb052c5cff2ac91018414ce81ca5e9ed1b1c6857b013
+  checksum: 10c0/95e7cced2c51c39b16b00595bd8ace6fc87f9545316467c8a8af0986d892cc29635f40c0f4ad81284c5af8f6445707996e3d49b17092b655fc95faa9bf6f46b2
   languageName: node
   linkType: hard
 
@@ -5108,7 +5108,7 @@ __metadata:
     jest: "npm:^30.2.0"
     jest-environment-jsdom: "npm:^30.2.0"
     js-yaml: "npm:^4.1.1"
-    markedit-api: "https://github.com/MarkEdit-app/MarkEdit-api#v0.18.0"
+    markedit-api: "https://github.com/MarkEdit-app/MarkEdit-api#v0.20.0"
     rollup: "npm:^4.0.0"
     ts-gyb: "npm:^0.12.0"
     ts-jest: "npm:^29.4.5"

@@ -13,6 +13,7 @@ export interface NativeModuleAPI extends NativeModule {
   deleteFile({ path }: { path: string }): Promise<boolean>;
   listFiles({ path }: { path: string }): Promise<string[] | undefined>;
   getFileContent({ path }: { path: string | undefined }): Promise<string | undefined>;
+  getFileObject({ path }: { path: string | undefined }): Promise<string | undefined>;
   getFileInfo({ path }: { path: string | undefined }): Promise<string | undefined>;
   getPasteboardItems(): Promise<string | undefined>;
   getPasteboardString(): Promise<string | undefined>;
