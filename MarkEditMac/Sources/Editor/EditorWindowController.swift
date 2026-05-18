@@ -18,12 +18,38 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate {
 
   override func windowDidLoad() {
     super.windowDidLoad()
-    window?.minSize = CGSize(width: 240, height: 0)
     window?.backgroundColor = .controlBackgroundColor
 
     windowFrameAutosaveName = "Editor"
     window?.setFrameUsingName(windowFrameAutosaveName)
     saveWindowRect()
+  }
+
+  override func showWindow(_ sender: Any?) {
+    if shouldWaitResetting {
+      // Snapshot the caller's tabbing preference,
+      // it may be reset before our deferred super call.
+      let callerTabbingPreference = NSWindow.allowsAutomaticWindowTabbing
+
+      Task { @MainActor [weak self] in
+        guard let self else {
+          return
+        }
+
+        // Defer the actual show until the editor finishes its first paint
+        await self.editorViewController?.waitUntilEditorReset()
+
+        let tabbingToRestore = NSWindow.allowsAutomaticWindowTabbing
+        NSWindow.allowsAutomaticWindowTabbing = callerTabbingPreference
+
+        self.showWindowImmediately(sender)
+        NSWindow.allowsAutomaticWindowTabbing = tabbingToRestore
+      }
+
+      return
+    }
+
+    showWindowImmediately(sender)
   }
 
   func windowDidBecomeMain(_ notification: Notification) {
@@ -45,12 +71,15 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate {
 
     // The shared "field editor" tends to hold focus,
     // manually resign the focus to ensure cmd-f responds correctly.
-    for editor in EditorReusePool.shared.viewControllers() where editor !== editorViewController {
+    for editor in EditorPreloader.shared.viewControllers() where editor !== editorViewController {
       editor.resignFindPanelFocus()
     }
 
     // The main menu is a singleton, we need to update the menu items for the active editor
     editorViewController?.resetUserDefinedMenuItems()
+
+    // Try if warmup can fix the empty suggestion bug
+    NSSpellChecker.warmUp
   }
 
   func windowDidResignKey(_ notification: Notification) {
@@ -80,8 +109,21 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate {
     editorViewController?.cancelCompletion()
   }
 
-  func windowWillClose(_ notification: Notification) {
-    editorViewController?.clearEditor()
+  // Capture tab state here, not in windowWillClose. By that point the window
+  // is already removed from the tab group so tabbedWindows is nil.
+  func windowShouldClose(_ sender: NSWindow) -> Bool {
+    captureTabIndex(for: sender)
+    return true
+  }
+
+  // Refresh titlebar appearance after fullscreen transitions,
+  // when the final `.fullScreen` style mask bit is available.
+  func windowDidEnterFullScreen(_ notification: Notification) {
+    updateTitleBarAppearance()
+  }
+
+  func windowDidExitFullScreen(_ notification: Notification) {
+    updateTitleBarAppearance()
   }
 }
 
@@ -90,6 +132,38 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate {
 private extension EditorWindowController {
   var editorViewController: EditorViewController? {
     contentViewController as? EditorViewController
+  }
+
+  var shouldWaitResetting: Bool {
+    guard let editor = editorViewController else {
+      return false
+    }
+
+    return editor.hasFinishedLoading && editor.pendingResetCount > 0
+  }
+
+  func showWindowImmediately(_ sender: Any?) {
+    super.showWindow(sender)
+  }
+
+  func updateTitleBarAppearance() {
+    (window as? EditorWindow)?.updateTitleBarAppearance()
+    editorViewController?.updateWindowColors(.current)
+  }
+
+  func captureTabIndex(for window: NSWindow) {
+    let document = editorViewController?.document
+    let tabbedWindows = window.tabbedWindows
+    let tabIndex = tabbedWindows?.firstIndex(of: window)
+    let sibling = tabbedWindows?.first { $0 !== window }
+
+    // tabbedWindows is nil for truly standalone windows, but a lone tab
+    // broken out of a group reports tabbedWindows.count == 1. Treat both as standalone.
+    let isStandalone = tabbedWindows == nil || tabbedWindows?.count == 1
+
+    document?.lastTabIndex = tabIndex
+    document?.lastWasStandalone = isStandalone
+    document?.lastSiblingWindow = sibling
   }
 
   func saveWindowRect() {
@@ -103,8 +177,15 @@ private extension EditorWindowController {
     // this is used for restoring the autosaved window frame.
     //
     // Unfortunately, we need to manually do the window cascading.
-    if let window, NSApp.windows.filter({ $0 is EditorWindow }).count > 1 {
-      autosavedFrame = window.cascadeRect(from: window.frame)
+    //
+    // Cascade from the frontmost existing EditorWindow's frame, not the new window's
+    // autosaved frame, to ensure the visual offset is relative to what the user sees.
+    let existingWindow = NSApp.orderedWindows.first {
+      $0 is EditorWindow && $0 !== window
+    }
+
+    if let window, let sourceFrame = existingWindow?.frame {
+      autosavedFrame = window.cascadeRect(from: sourceFrame)
     } else {
       autosavedFrame = window?.frame
     }

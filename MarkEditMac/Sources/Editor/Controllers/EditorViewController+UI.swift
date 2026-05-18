@@ -143,7 +143,8 @@ extension EditorViewController {
 
     if AppDesign.modernTitleBar {
       let isMainWindow = view.window?.isMainWindow ?? false
-      let reduceTransparency = !isMainWindow || AppDesign.reduceTransparency
+      let isFullscreen = view.window?.styleMask.contains(.fullScreen) ?? false
+      let reduceTransparency = !isMainWindow || AppDesign.reduceTransparency || isFullscreen
       let baseColor = backgroundColor.withAlphaComponent(reduceTransparency ? 1.0 : 0.01)
 
       view.window?.backgroundColor = baseColor
@@ -226,6 +227,9 @@ extension EditorViewController {
     if AppDesign.modernTitleBar {
       modernEffectHeight.constant = view.safeAreaInsets.top + panelDivider.frame.height
       modernDividerView.update(animated).alphaValue = findPanel.mode == .hidden ? 0 : 1
+    } else {
+      // To avoid duplicate dividers on legacy titlebar
+      panelDivider.isHidden = findPanel.mode == .hidden
     }
 
     // The position of this divider should be fixed
@@ -375,10 +379,8 @@ extension EditorViewController {
     }
 
     // Remove existing ones, always recreate a new item
-    (menu.items.filter {
-      $0.identifier?.rawValue.hasPrefix(EditorMenuItem.uniquePrefix) == true
-    }).forEach {
-      menu.removeItem($0)
+    for item in menu.items where item.identifier?.rawValue.hasPrefix(EditorMenuItem.uniquePrefix) == true {
+      menu.removeItem(item)
     }
 
     for spec in userDefinedMenuItems {
@@ -472,7 +474,7 @@ extension EditorViewController {
     class TextField: NSTextField {
       override func performKeyEquivalent(with event: NSEvent) -> Bool {
         // The default "selectAll" is not available here
-        if event.deviceIndependentFlags == .command, event.keyCode == .kVK_ANSI_A {
+        if event.userModifierFlags == .command, event.keyCode == .kVK_ANSI_A {
           currentEditor()?.selectAll(nil)
           return true
         }
@@ -655,8 +657,8 @@ private extension EditorViewController {
     handler: @escaping (String, ((Result<Void, WKWebView.InvokeError>) -> Void)?) -> Void
   ) -> NSMenu {
     let menu = NSMenu()
-    items.map { createMenuItem(spec: $0, handler: handler) }.forEach {
-      menu.addItem($0)
+    for spec in items {
+      menu.addItem(createMenuItem(spec: spec, handler: handler))
     }
 
     menu.delegate = self

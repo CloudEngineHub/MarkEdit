@@ -37,6 +37,37 @@ public extension URL {
     return true
   }
 
+  var isImageFile: Bool {
+    guard let type = UTType(filenameExtension: pathExtension) else {
+      return false
+    }
+
+    return type.conforms(to: .image)
+  }
+
+  /// POSIX relative path from directory `base` to this URL.
+  ///
+  /// Returns `"."` when the two URLs refer to the same path. Symlinks are
+  /// resolved before comparison, so paths under `/var` and `/private/var`
+  /// reduce consistently. `.` / `..` segments are normalized away.
+  func relativePath(from base: URL) -> String {
+    let resolvedBase = base.resolvingSymlinksInPath().standardizedFileURL
+    let resolvedTarget = resolvingSymlinksInPath().standardizedFileURL
+    let baseParts = resolvedBase.pathComponents.filter { $0 != "/" }
+    let targetParts = resolvedTarget.pathComponents.filter { $0 != "/" }
+
+    // Skip the shared prefix, then climb out of `base` and descend into the target.
+    var common = 0
+    while common < baseParts.count, common < targetParts.count, baseParts[common] == targetParts[common] {
+      common += 1
+    }
+
+    let ups = Array(repeating: "..", count: baseParts.count - common)
+    let downs = Array(targetParts[common...])
+    let segments = ups + downs
+    return segments.isEmpty ? "." : segments.joined(separator: "/")
+  }
+
   func replacingPathExtension(_ pathExtension: String) -> URL {
     deletingPathExtension().appendingPathExtension(pathExtension)
   }

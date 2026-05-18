@@ -23,7 +23,7 @@ extension EditorViewController {
       }
 
       // Press right option
-      if event.keyCode == .kVK_RightOption, event.deviceIndependentFlags == .option, let self {
+      if event.keyCode == .kVK_RightOption, event.userModifierFlags == .option, let self {
         if NSSpellChecker.hasVisibleCorrectionPanel {
           // Accept auto correction
           NSSpellChecker.shared.dismissCorrectionIndicator(for: self.webView)
@@ -50,7 +50,7 @@ extension EditorViewController {
 
       // Press Option-Command-I to show the inspector
       if event.keyCode == .kVK_ANSI_I,
-         event.deviceIndependentFlags == [.option, .command],
+         event.userModifierFlags == [.option, .command],
          let self, self.view.window != nil {
         self.webView.showInspector()
         return nil
@@ -69,12 +69,27 @@ extension EditorViewController {
 
       // (Alternatives) F3 to find next, Shift-F3 to find previous
       if event.keyCode == .kVK_F3, let self {
-        if event.deviceIndependentFlags == .shift {
+        if event.userModifierFlags == .shift {
           self.findPreviousInTextFinder()
         } else {
           self.findNextInTextFinder()
         }
         return nil
+      }
+
+      // (Alternatives) Option-Command-Left/Right to switch tabs, mimicking browsers.
+      // macOS uses Control-Tab by default; provide the browser-style shortcut as well.
+      if event.userModifierFlags == [.option, .command], (window.tabbedWindows?.count ?? 0) > 1 {
+        switch event.keyCode {
+        case .kVK_LeftArrow:
+          window.selectPreviousTab(nil)
+          return nil
+        case .kVK_RightArrow:
+          window.selectNextTab(nil)
+          return nil
+        default:
+          break
+        }
       }
 
       return event

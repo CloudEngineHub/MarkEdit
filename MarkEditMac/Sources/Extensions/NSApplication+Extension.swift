@@ -17,4 +17,12 @@ extension NSApplication {
 
     return delegate
   }
+
+  var currentEditor: EditorViewController? {
+    if let editor = keyWindow?.contentViewController as? EditorViewController {
+      return editor
+    }
+
+    return mainWindow?.contentViewController as? EditorViewController
+  }
 }

@@ -13,12 +13,19 @@ import Statistics
 import TextCompletion
 
 final class EditorViewController: NSViewController {
-  var hasFinishedLoading = false
+  var hasFinishedLoading = false {
+    didSet {
+      loadingContinuations.forEach { $0.resume() }
+      loadingContinuations.removeAll()
+    }
+  }
+
   var hasUnfinishedAnimations = false
   var hasBeenEdited = false
   var mouseExitedWindow = false
   var nativeSearchQueryChanged = false
   var bottomPanelHeight: Double = 0
+  var pendingResetCount: Int = 0
   var initialContent: String?
   var webBackgroundColor = AppPreferences.Window.cachedBackgroundColor?.nsColor
   var localEventMonitor: Any?
@@ -148,14 +155,18 @@ final class EditorViewController: NSViewController {
       ))
     }
 
-    let config: WKWebViewConfiguration = .newConfig(disableCors: AppRuntimeConfig.disableCorsRestrictions)
+    let config: WKWebViewConfiguration = .newConfig(
+      disableCors: AppRuntimeConfig.disableCorsRestrictions,
+      disabledFeatures: AppRuntimeConfig.disabledWebKitFeatures
+    )
+
     config.userContentController = controller
     config.applicationNameForUserAgent = "\(ProcessInfo.processInfo.userAgent) \(Bundle.main.userAgent)"
     config.allowsInlinePredictions = NSSpellChecker.InlineCompletion.webKitEnabled
 
     let chunkLoader = EditorChunkLoader()
     let imageLoader = EditorImageLoader { [weak self] in
-      self?.document?.folderURL
+      self?.document?.baseURL
     }
 
     config.setURLSchemeHandler(chunkLoader, forURLScheme: EditorChunkLoader.scheme)
@@ -171,6 +182,7 @@ final class EditorViewController: NSViewController {
     webView.allowsMagnification = true
     webView.uiDelegate = self
     webView.actionDelegate = self
+    webView.disableWindowOcclusionDetection()
 
     let theme = AppTheme.current.editorTheme
     DispatchQueue.global(qos: .userInitiated).async {
@@ -219,6 +231,10 @@ final class EditorViewController: NSViewController {
     }
   }()
 
+  // For CoreEditor preload
+  private var loadingContinuations = [CheckedContinuation<Void, Never>]()
+  private var resetContinuations = [CheckedContinuation<Void, Never>]()
+
   deinit {
     if let monitor = localEventMonitor {
       NSEvent.removeMonitor(monitor)
@@ -226,9 +242,16 @@ final class EditorViewController: NSViewController {
     }
   }
 
-  init() {
+  init(preloadDelay: TimeInterval? = nil) {
     super.init(nibName: nil, bundle: nil)
-    _ = self.webView // Pre-load
+
+    if let preloadDelay, preloadDelay > 0 {
+      DispatchQueue.main.asyncAfter(deadline: .now() + preloadDelay) { [weak self] in
+        _ = self?.webView
+      }
+    } else {
+      _ = self.webView
+    }
   }
 
   @available(*, unavailable)
@@ -283,6 +306,11 @@ final class EditorViewController: NSViewController {
 
   override var representedObject: Any? {
     didSet {
+      // If there's a file on disk, its data must be in memory
+      guard document?.isContentReady == true else {
+        return
+      }
+
       resetEditor()
     }
   }
@@ -291,6 +319,26 @@ final class EditorViewController: NSViewController {
 // MARK: - Exposed Methods
 
 extension EditorViewController {
+  func waitUntilLoaded() async {
+    if hasFinishedLoading {
+      return
+    }
+
+    await withCheckedContinuation {
+      loadingContinuations.append($0)
+    }
+  }
+
+  func waitUntilEditorReset() async {
+    guard pendingResetCount > 0 else {
+      return
+    }
+
+    await withCheckedContinuation {
+      resetContinuations.append($0)
+    }
+  }
+
   func prepareInitialContent(_ text: String) {
     if hasFinishedLoading {
       prependTextContent(text)
@@ -303,29 +351,45 @@ extension EditorViewController {
     bridge.core.insertText(text: text, from: 0, to: 0)
   }
 
-  func clearEditor() {
-    updateTextFinderMode(.hidden, searchTerm: "")
-
-    // The delay is in theory not necessary,
-    // because autosave happens before closing the window.
-    //
-    // Just in case someone introduces race conditions.
-    DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-      self.bridge.core.clearEditor()
-    }
-  }
-
   func resetEditor() {
-    guard hasFinishedLoading else {
+    guard hasFinishedLoading, let textContent = document?.stringValue else {
       return
     }
 
-    bridge.core.resetEditor(text: document?.stringValue ?? "") { _ in
-      self.webView.magnification = 1.0
-      self.bridge.textChecker.update(options: TextCheckerOptions(
-        spellcheck: true,
-        autocorrect: true
-      ))
+    let selectionRange: SelectionRange? = {
+      guard AppRuntimeConfig.restoreLastSelection, let fileURL = document?.fileURL else {
+        return nil
+      }
+
+      // Content was reloaded from disk due to an external edit, discard stale offsets
+      if document?.hasBeenReverted == true {
+        EditorSelectionHistory.discard(for: fileURL)
+        return nil
+      }
+
+      // Non-LF files have mismatched lengths due to CodeMirror normalization, skip the check
+      let fileSize = textContent.contains("\r") ? nil : textContent.utf16.count
+      return EditorSelectionHistory.selectionRange(for: fileURL, fileSize: fileSize)
+    }()
+
+    webView.magnification = 1.0
+    pendingResetCount += 1
+
+    Task { @MainActor [weak self] in
+      guard let self else {
+        return
+      }
+
+      _ = try? await self.bridge.core.resetEditor(
+        text: textContent,
+        selectionRange: selectionRange
+      )
+
+      self.pendingResetCount -= 1
+      if self.pendingResetCount == 0 {
+        self.resetContinuations.forEach { $0.resume() }
+        self.resetContinuations.removeAll()
+      }
 
       // Initial content from scenarios like "CreateNewDocumentIntent" or "New File from Clipboard"
       if let text = self.initialContent {

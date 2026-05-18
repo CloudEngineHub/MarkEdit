@@ -1,22 +1,26 @@
 import { EditorView } from '@codemirror/view';
-import { EditorSelection } from '@codemirror/state';
+import { EditorSelection, EditorState } from '@codemirror/state';
 import { extensions } from './extensions';
-import { globalState, editingState } from './common/store';
-import { almostEqual, afterDomUpdate, getViewportScale, isReleaseMode } from './common/utils';
+import { globalState } from './common/store';
+import { almostEqual, afterDomUpdate, getViewportScale, isReleaseMode, isMotionReduced } from './common/utils';
 
 import hasSelection from './modules/selection/hasSelection';
+import normalizeSelection from './modules/selection/normalizeSelection';
 import replaceSelections from './modules/commands/replaceSelections';
 
 import { resetKeyStates } from './modules/events';
-import { setUp, setGutterHovered } from './styling/config';
+import { setUp, setGutterHovered, applyReducedMotion } from './styling/config';
 import { notifyBackgroundColor } from './styling/helper';
 import { loadTheme } from './styling/themes';
 import { recalculateTextMetrics } from './modules/config';
 import { getReadableContent } from './modules/lezer';
 import { getLineBreak, normalizeLineBreaks } from './modules/lineEndings';
 import { removeFrontMatter } from './modules/frontMatter';
-import { selectedMainText, scrollIntoView } from './modules/selection';
+import { selectedMainText, scrollIntoView, caretScrollDefaults } from './modules/selection';
+import { selectedLineColumn } from './modules/selection/selectedLineColumn';
+import { SelectionRange } from './modules/selection/types';
 import { markContentClean } from './modules/history';
+import { updateTextChecker } from './modules/textChecker';
 
 import { TextEditor } from './api/editor';
 import { editorReadyListeners } from './api/methods';
@@ -58,24 +62,28 @@ export enum ReplaceGranularity {
 /**
  * Reset the editor to the initial state.
  */
-export function resetEditor(initialContent: string) {
-  // Idle state change should always go first
-  editingState.isIdle = false;
-
+export async function resetEditor(initialContent: string, selectionRange?: SelectionRange): Promise<boolean> {
   // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
   if (typeof window.editor?.destroy === 'function') {
     window.editor.destroy();
   }
 
-  const lineBreak = getLineBreak(
-    initialContent,
-    window.config.defaultLineBreak,
-  );
+  const lineBreak = getLineBreak(initialContent, window.config.defaultLineBreak);
+  const initialDoc = normalizeLineBreaks(initialContent, lineBreak);
+  const initialSelection = normalizeSelection(initialDoc.length, selectionRange);
+  const selectionRestored = selectionRange !== undefined && (selectionRange.anchor !== 0 || selectionRange.head !== 0);
 
   const editor = new EditorView({
-    doc: normalizeLineBreaks(initialContent, lineBreak),
+    state: EditorState.create({
+      doc: initialDoc,
+      selection: initialSelection,
+      extensions: extensions({ lineBreak }),
+    }),
     parent: document.querySelector('#editor') ?? document.body,
-    extensions: extensions({ lineBreak }),
+    // Initial scroll to avoid an extra transaction
+    scrollTo: selectionRestored
+      ? EditorView.scrollIntoView(initialSelection.head, caretScrollDefaults)
+      : undefined,
   });
 
   editor.focus();
@@ -98,17 +106,25 @@ export function resetEditor(initialContent: string) {
   ensureLineHeight();
   setTimeout(ensureLineHeight, 1000);
 
-  // Makes sure the content doesn't have unwanted inset
-  scrollIntoView(0, window.config.typewriterMode ? 'center' : undefined);
-
   const contentDOM = editor.contentDOM;
+  contentDOM.dataset.language = 'markdown'; // Because of the front-matter wrapper
   contentDOM.addEventListener('blur', handleFocusLost);
 
-  const scrollDOM = editor.scrollDOM;
-  scrollDOM.scrollTo({ top: 0 }); // scrollIntoView doesn't work when the app is idle
+  updateTextChecker(contentDOM, {
+    spellcheck: true,
+    autocorrect: true,
+  });
 
+  const scrollDOM = editor.scrollDOM;
   observeContentHeightChanges(scrollDOM);
   fixWebKitWheelIssues(scrollDOM);
+
+  if (!selectionRestored) {
+    // Makes sure the content doesn't have unwanted inset
+    scrollIntoView(0, window.config.typewriterMode ? 'center' : undefined);
+    // scrollIntoView doesn't work when the app is idle
+    scrollDOM.scrollTo({ top: 0 });
+  }
 
   if ('onscrollend' in window) { // [macOS] 26.2
     scrollDOM.addEventListener('scrollend', () => {
@@ -127,23 +143,24 @@ export function resetEditor(initialContent: string) {
     });
   }
 
-  // Recofigure, window.config might have changed
+  // Reconfigure, window.config might have changed
   setUp(window.config, loadTheme(window.config.theme).colors);
+  applyReducedMotion(isMotionReduced());
   observeBackgroundColorChanges(editor.dom);
   afterDomUpdate(notifyBackgroundColor);
 
   // Recalculate text metrics to update the max height of autocomplete
   requestAnimationFrame(() => recalculateTextMetrics());
 
-  // After calling editor.focus(), the selection is set to [Ln 1, Col 1]
+  // Notify native with the initial state
   window.nativeModules.core.notifyViewDidUpdate({
     contentEdited: false,
     compositionEnded: true,
     isDirty: false,
     selectedLineColumn: {
-      lineNumber: 1 as CodeGen_Int,
-      columnText: '',
-      selectionText: '',
+      ...selectedLineColumn().getInfo(),
+      // Intentionally undefined to avoid saving the selection during reset
+      selectionRange: undefined,
     },
   });
 
@@ -152,19 +169,24 @@ export function resetEditor(initialContent: string) {
 
   // For user scripts, notify the editor is ready
   editorReadyListeners().forEach(listener => listener(editor));
-}
 
-/**
- * Clear the editor, set the content to empty.
- */
-export function clearEditor() {
-  // Idle state change should always go first
-  editingState.isIdle = true;
+  // Wait for the first paint: rAF when foregrounded, setTimeout as a fallback when throttled
+  await new Promise<void>(resolve => {
+    let settled = false;
+    const unblockWaiting = () => {
+      if (settled) {
+        return;
+      }
 
-  const editor = window.editor;
-  editor.dispatch({
-    changes: { from: 0, to: editor.state.doc.length, insert: '' },
+      settled = true;
+      resolve();
+    };
+
+    requestAnimationFrame(unblockWaiting);
+    afterDomUpdate(unblockWaiting);
   });
+
+  return true;
 }
 
 export function getEditorState() {
@@ -230,6 +252,23 @@ export function replaceText(text: string, granularity: ReplaceGranularity) {
     case ReplaceGranularity.selection:
       replaceSelections(text);
       break;
+  }
+}
+
+/**
+ * Insert text at the current drop cursor position, used by the native file-drop handler.
+ */
+export function performTextDrop(text: string) {
+  const editor = window.editor;
+  const cursor = editor.scrollDOM.querySelector('.cm-dropCursor');
+  const rect = cursor?.getBoundingClientRect();
+  const pos = rect ? editor.posAtCoords({ x: rect.left, y: rect.top + rect.height * 0.5 }) : null;
+  editor.contentDOM.dispatchEvent(new DragEvent('dragend'));
+
+  if (pos === null) {
+    replaceSelections(text);
+  } else {
+    insertText(text, pos, pos);
   }
 }
 

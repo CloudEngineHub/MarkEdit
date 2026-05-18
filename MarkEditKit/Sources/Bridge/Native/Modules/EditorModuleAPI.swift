@@ -13,8 +13,8 @@ import UniformTypeIdentifiers
 
 @MainActor
 public protocol EditorModuleAPIDelegate: AnyObject {
-  func editorAPIOpenFile(_ sender: EditorModuleAPI, fileURL: URL) -> Bool
-  func editorAPIGetFileURL(_ sender: EditorModuleAPI, path: String?) -> URL?
+  func editorAPISaveDocument(_ sender: EditorModuleAPI) async -> Bool
+  func editorAPICloseDocument(_ sender: EditorModuleAPI) -> Bool
   func editorAPI(_ sender: EditorModuleAPI, addMainMenuItems items: [(String, WebMenuItem)])
   func editorAPI(_ sender: EditorModuleAPI, showContextMenu items: [WebMenuItem], location: WebPoint)
   func editorAPI(
@@ -31,6 +31,8 @@ public protocol EditorModuleAPIDelegate: AnyObject {
   ) async -> String?
   func editorAPI(_ sender: EditorModuleAPI, showSavePanel data: Data, fileName: String?) async -> Bool
   func editorAPI(_ sender: EditorModuleAPI, runService name: String, input: String?) async -> Bool
+  func editorAPIOpenFile(_ sender: EditorModuleAPI, fileURL: URL) -> Bool
+  func editorAPIGetFileURL(_ sender: EditorModuleAPI, path: String?) -> URL?
 }
 
 public final class EditorModuleAPI: NativeModuleAPI {
@@ -38,6 +40,40 @@ public final class EditorModuleAPI: NativeModuleAPI {
 
   public init(delegate: EditorModuleAPIDelegate) {
     self.delegate = delegate
+  }
+
+  public func saveDocument() async -> Bool {
+    await delegate?.editorAPISaveDocument(self) == true
+  }
+
+  public func closeDocument() async -> Bool {
+    delegate?.editorAPICloseDocument(self) == true
+  }
+
+  public func addMainMenuItems(items: [WebMenuItem]) {
+    delegate?.editorAPI(self, addMainMenuItems: items.map { item in
+      (item.uniqueID.sha256Hash, item)
+    })
+  }
+
+  public func showContextMenu(items: [WebMenuItem], location: WebPoint) {
+    delegate?.editorAPI(self, showContextMenu: items, location: location)
+  }
+
+  public func showAlert(title: String?, message: String?, buttons: [String]?) async -> Int {
+    await delegate?.editorAPI(self, alertWith: title, message: message, buttons: buttons) ?? 0
+  }
+
+  public func showTextBox(title: String?, placeholder: String?, defaultValue: String?) async -> String? {
+    await delegate?.editorAPI(self, showTextBox: title, placeholder: placeholder, defaultValue: defaultValue)
+  }
+
+  public func showSavePanel(options: SavePanelOptions) async -> Bool {
+    await delegate?.editorAPI(self, showSavePanel: options.decodedData, fileName: options.fileName) == true
+  }
+
+  public func runService(name: String, input: String?) async -> Bool {
+    (await delegate?.editorAPI(self, runService: name, input: input)) == true
   }
 
   public func openFile(path: String) async -> Bool {
@@ -49,11 +85,10 @@ public final class EditorModuleAPI: NativeModuleAPI {
       return false
     }
 
-    if options.overwrites == true {
-      var isDirectory: ObjCBool = false
-      if FileManager.default.fileExists(atPath: fileURL.path, isDirectory: &isDirectory) && isDirectory.boolValue {
-        try? FileManager.default.removeItem(at: fileURL)
-      }
+    var (fileExists, isDirectory) = FileManager.default.fileExists(at: fileURL)
+    if fileExists && isDirectory && options.overwrites == true {
+      try? FileManager.default.removeItem(at: fileURL)
+      fileExists = false
     }
 
     do {
@@ -63,8 +98,10 @@ public final class EditorModuleAPI: NativeModuleAPI {
           withIntermediateDirectories: true
         )
       } else {
-        if !FileManager.default.fileExists(atPath: fileURL.path) || options.overwrites == true {
+        if !fileExists {
           try options.decodedData.write(to: fileURL, options: .atomic)
+        } else if options.overwrites == true {
+          try options.decodedData.overwrite(to: fileURL)
         }
       }
 
@@ -182,32 +219,6 @@ public final class EditorModuleAPI: NativeModuleAPI {
     return nil
   #endif
   }
-
-  public func addMainMenuItems(items: [WebMenuItem]) {
-    delegate?.editorAPI(self, addMainMenuItems: items.map { item in
-      (item.uniqueID.sha256Hash, item)
-    })
-  }
-
-  public func showContextMenu(items: [WebMenuItem], location: WebPoint) {
-    delegate?.editorAPI(self, showContextMenu: items, location: location)
-  }
-
-  public func showAlert(title: String?, message: String?, buttons: [String]?) async -> Int {
-    await delegate?.editorAPI(self, alertWith: title, message: message, buttons: buttons) ?? 0
-  }
-
-  public func showTextBox(title: String?, placeholder: String?, defaultValue: String?) async -> String? {
-    await delegate?.editorAPI(self, showTextBox: title, placeholder: placeholder, defaultValue: defaultValue)
-  }
-
-  public func showSavePanel(options: SavePanelOptions) async -> Bool {
-    await delegate?.editorAPI(self, showSavePanel: options.decodedData, fileName: options.fileName) == true
-  }
-
-  public func runService(name: String, input: String?) async -> Bool {
-    (await delegate?.editorAPI(self, runService: name, input: input)) == true
-  }
 }
 
 // MARK: - Internal
@@ -245,5 +256,32 @@ private extension WebDataTransfer {
     }
 
     return Data()
+  }
+}
+
+private extension FileManager {
+  func fileExists(at url: URL) -> (fileExists: Bool, isDirectory: Bool) {
+    var isDirectory: ObjCBool = false
+    let fileExists = fileExists(atPath: url.path(percentEncoded: false), isDirectory: &isDirectory)
+    return (fileExists, isDirectory.boolValue)
+  }
+}
+
+private extension Data {
+  /// Overwrites the contents of the file at `url` in place,
+  /// preserving the inode, permissions, and extended attributes.
+  ///
+  /// Writes the new payload from offset 0 first, then truncates any
+  /// remaining tail. This avoids ever observing an empty file: if a
+  /// crash happens between the two steps, the file still contains
+  /// the full new content (possibly followed by stale tail bytes),
+  /// rather than being truncated to zero length.
+  func overwrite(to url: URL) throws {
+    let handle = try FileHandle(forWritingTo: url)
+    defer { try? handle.close() }
+
+    try handle.seek(toOffset: 0)
+    try handle.write(contentsOf: self)
+    try handle.truncate(atOffset: UInt64(count))
   }
 }

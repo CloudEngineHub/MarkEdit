@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<document type="com.apple.InterfaceBuilder3.Cocoa.Storyboard.XIB" version="3.0" toolsVersion="24506" targetRuntime="MacOSX.Cocoa" propertyAccessControl="none" useAutolayout="YES">
+<document type="com.apple.InterfaceBuilder3.Cocoa.Storyboard.XIB" version="3.0" toolsVersion="24765" targetRuntime="MacOSX.Cocoa" propertyAccessControl="none" useAutolayout="YES">
     <dependencies>
-        <plugIn identifier="com.apple.InterfaceBuilder.CocoaPlugin" version="24506"/>
+        <plugIn identifier="com.apple.InterfaceBuilder.CocoaPlugin" version="24765"/>
         <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
     </dependencies>
     <scenes>
@@ -148,6 +148,12 @@
                                                 <action selector="performClose:" target="Ady-hI-5gd" id="HmO-Ls-i7Q"/>
                                             </connections>
                                         </menuItem>
+                                        <menuItem title="Reopen Closed Tab" secondaryImage="macwindow.on.rectangle" catalog="system" keyEquivalent="T" id="rct-Cm-ShT">
+                                            <modifierMask key="keyEquivalentModifierMask" shift="YES" command="YES"/>
+                                            <connections>
+                                                <action selector="reopenClosedTab:" target="Voe-Tx-rLC" id="rct-Ac-001"/>
+                                            </connections>
+                                        </menuItem>
                                         <menuItem title="Save…" keyEquivalent="s" id="pxx-59-PXV">
                                             <connections>
                                                 <action selector="saveDocument:" target="Ady-hI-5gd" id="teZ-XB-qJY"/>
@@ -252,7 +258,7 @@
                                                 <action selector="revealInFinder:" target="Ady-hI-5gd" id="bfk-c8-dF4"/>
                                             </connections>
                                         </menuItem>
-                                        <menuItem title="Open In…" hidden="YES" id="GdB-IP-6C8">
+                                        <menuItem title="Open In…" id="GdB-IP-6C8">
                                             <modifierMask key="keyEquivalentModifierMask"/>
                                             <menu key="submenu" title="Open In…" id="Tuy-2U-frg">
                                                 <connections>
@@ -260,7 +266,7 @@
                                                 </connections>
                                             </menu>
                                         </menuItem>
-                                        <menuItem title="Reopen with Encoding" hidden="YES" id="XQw-pS-pD7">
+                                        <menuItem title="Reopen with Encoding" id="XQw-pS-pD7">
                                             <modifierMask key="keyEquivalentModifierMask"/>
                                             <menu key="submenu" title="Reopen with Encoding" id="sPG-vJ-QST">
                                                 <connections>
@@ -268,7 +274,7 @@
                                                 </connections>
                                             </menu>
                                         </menuItem>
-                                        <menuItem title="Line Endings" hidden="YES" id="EEg-eg-6lJ">
+                                        <menuItem title="Line Endings" id="EEg-eg-6lJ">
                                             <modifierMask key="keyEquivalentModifierMask"/>
                                             <menu key="submenu" title="Line Endings" id="7eH-ja-yIc">
                                                 <items>
@@ -1085,7 +1091,7 @@ Gw
         <scene sceneID="R2V-B0-nI4">
             <objects>
                 <windowController storyboardIdentifier="EditorWindowController" id="jGA-0Y-lOj" userLabel="Editor Window Controller" customClass="EditorWindowController" customModule="MarkEdit" customModuleProvider="target" sceneMemberID="viewController">
-                    <window key="window" title="Window" separatorStyle="line" allowsToolTipsWhenApplicationIsInactive="NO" autorecalculatesKeyViewLoop="NO" visibleAtLaunch="NO" frameAutosaveName="" animationBehavior="default" titlebarAppearsTransparent="YES" toolbarStyle="unified" id="Ckk-yw-fiv" customClass="EditorWindow" customModule="MarkEdit" customModuleProvider="target">
+                    <window key="window" title="Window" separatorStyle="line" allowsToolTipsWhenApplicationIsInactive="NO" autorecalculatesKeyViewLoop="NO" visibleAtLaunch="NO" frameAutosaveName="" animationBehavior="default" toolbarStyle="unified" id="Ckk-yw-fiv" customClass="EditorWindow" customModule="MarkEdit" customModuleProvider="target">
                         <windowStyleMask key="styleMask" titled="YES" closable="YES" miniaturizable="YES" resizable="YES" fullSizeContentView="YES"/>
                         <rect key="contentRect" x="89" y="664" width="720" height="480"/>
                         <rect key="screenRect" x="0.0" y="0.0" width="1680" height="1027"/>

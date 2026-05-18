@@ -23,6 +23,19 @@ final class EditorDocument: NSDocument {
   var isReadOnlyMode = false
   var isTerminating = false
 
+  // For tab restoration
+  var lastTabIndex: Int?
+  var lastWasStandalone: Bool = false
+  weak var lastSiblingWindow: NSWindow?
+
+  var isContentReady: Bool {
+    isDraft || fileURL == nil || fileData != nil
+  }
+
+  var hasBeenReverted: Bool {
+    Date.now.timeIntervalSince(revertedDate) < 1
+  }
+
   var canUndo: Bool {
     get async {
       if isReadOnlyMode {
@@ -87,7 +100,7 @@ final class EditorDocument: NSDocument {
     }
 
     // Note hostViewController is a weak reference, it must be strongly retained first
-    let contentVC = EditorReusePool.shared.dequeueViewController()
+    let contentVC = EditorPreloader.shared.takeViewController()
     windowController.contentViewController = contentVC
 
     // Restore the autosaved window frame, which relies on windowFrameAutosaveName
@@ -267,6 +280,7 @@ extension EditorDocument {
   }
 
   override func close() {
+    saveToClosedTabHistory()
     super.close()
 
     if let spellDocTag {
@@ -602,10 +616,6 @@ private extension EditorDocument {
 
   var closeAlwaysConfirmsChanges: Bool {
     UserDefaults.standard.bool(forKey: NSCloseAlwaysConfirmsChanges)
-  }
-
-  var hasBeenReverted: Bool {
-    Date.now.timeIntervalSince(revertedDate) < 1
   }
 
   var needsFormatting: Bool {

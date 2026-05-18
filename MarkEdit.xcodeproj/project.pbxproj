@@ -57,6 +57,7 @@
 		87585FE22DA3EC7A0053069E /* EditorDocument+Scripting.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87585FDE2DA3EC7A0053069E /* EditorDocument+Scripting.swift */; };
 		87585FE32DA3EC7A0053069E /* NSColor+Scripting.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87585FDF2DA3EC7A0053069E /* NSColor+Scripting.swift */; };
 		87585FE42DA3EC7A0053069E /* Error+Scripting.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87585FE02DA3EC7A0053069E /* Error+Scripting.swift */; };
+		8763C3202F92574D00A3841D /* EditorHistoryStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8763C31E2F92574900A3841D /* EditorHistoryStorage.swift */; };
 		876578FA2993853500A1388A /* index.html in Resources */ = {isa = PBXBuildFile; fileRef = 876578F92993853500A1388A /* index.html */; };
 		8765FD252AF28F1000C645A8 /* AppUpdater.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8765FD242AF28F1000C645A8 /* AppUpdater.swift */; };
 		8765FD292AF291D300C645A8 /* AppVersion.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8765FD282AF291D300C645A8 /* AppVersion.swift */; };
@@ -65,7 +66,7 @@
 		8767BBB5295AD62700BFACAE /* EditorReplaceButtons.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8767BBB4295AD62700BFACAE /* EditorReplaceButtons.swift */; };
 		8769BABE2C65F9D400EDA0A6 /* AppRuntimeConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8769BABD2C65F9D400EDA0A6 /* AppRuntimeConfig.swift */; };
 		876D70872E7A8E9D00E308A4 /* AppIcon.icon in Resources */ = {isa = PBXBuildFile; fileRef = 876D70862E7A8E9D00E308A4 /* AppIcon.icon */; };
-		8772E385294AC60D00111E83 /* EditorReusePool.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8772E384294AC60D00111E83 /* EditorReusePool.swift */; };
+		8772E385294AC60D00111E83 /* EditorPreloader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8772E384294AC60D00111E83 /* EditorPreloader.swift */; };
 		8775A77B29867012005867BF /* FontPicker in Frameworks */ = {isa = PBXBuildFile; productRef = 8775A77A29867012005867BF /* FontPicker */; };
 		877A6D802C77248A001EC516 /* NSPopover+Extension.swift in Sources */ = {isa = PBXBuildFile; fileRef = 877A6D7F2C77248A001EC516 /* NSPopover+Extension.swift */; };
 		877B965D2C63815000186414 /* AppHotKeys.swift in Sources */ = {isa = PBXBuildFile; fileRef = 877B965C2C63815000186414 /* AppHotKeys.swift */; };
@@ -110,6 +111,11 @@
 		87F2B61429AF2F3A0027103E /* NSSpellChecker+Extension.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87F2B61329AF2F3A0027103E /* NSSpellChecker+Extension.swift */; };
 		87FAFFD72BE0B6A300FA509D /* AppDelegate+FileSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87FAFFD62BE0B6A300FA509D /* AppDelegate+FileSystem.swift */; };
 		B0E02F682D8F77A50060DEA5 /* MarkEdit.sdef in Resources */ = {isa = PBXBuildFile; fileRef = B0E02F672D8F77A50060DEA5 /* MarkEdit.sdef */; };
+		CC000002300000000000001A /* EditorDocument+ClosedTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC000002300000000000001B /* EditorDocument+ClosedTab.swift */; };
+		CC000003300000000000001A /* AppDelegate+ClosedTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC000003300000000000001B /* AppDelegate+ClosedTab.swift */; };
+		CC000004300000000000001A /* EditorSelectionHistory.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC000004300000000000001B /* EditorSelectionHistory.swift */; };
+		CC000006300000000000001A /* EditorClosedTabHistory.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC000006300000000000001B /* EditorClosedTabHistory.swift */; };
+		CC000020300000000000FD01 /* FileDrop in Frameworks */ = {isa = PBXBuildFile; productRef = CC000020300000000000FD02 /* FileDrop */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -200,6 +206,7 @@
 		87585FDE2DA3EC7A0053069E /* EditorDocument+Scripting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "EditorDocument+Scripting.swift"; sourceTree = "<group>"; };
 		87585FDF2DA3EC7A0053069E /* NSColor+Scripting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NSColor+Scripting.swift"; sourceTree = "<group>"; };
 		87585FE02DA3EC7A0053069E /* Error+Scripting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Error+Scripting.swift"; sourceTree = "<group>"; };
+		8763C31E2F92574900A3841D /* EditorHistoryStorage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditorHistoryStorage.swift; sourceTree = "<group>"; };
 		876578F92993853500A1388A /* index.html */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.html; name = index.html; path = "CoreEditor/src/@light/dist/index.html"; sourceTree = SOURCE_ROOT; };
 		8765FD242AF28F1000C645A8 /* AppUpdater.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppUpdater.swift; sourceTree = "<group>"; };
 		8765FD282AF291D300C645A8 /* AppVersion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppVersion.swift; sourceTree = "<group>"; };
@@ -208,7 +215,7 @@
 		8767BBB4295AD62700BFACAE /* EditorReplaceButtons.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditorReplaceButtons.swift; sourceTree = "<group>"; };
 		8769BABD2C65F9D400EDA0A6 /* AppRuntimeConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppRuntimeConfig.swift; sourceTree = "<group>"; };
 		876D70862E7A8E9D00E308A4 /* AppIcon.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = AppIcon.icon; sourceTree = "<group>"; };
-		8772E384294AC60D00111E83 /* EditorReusePool.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditorReusePool.swift; sourceTree = "<group>"; };
+		8772E384294AC60D00111E83 /* EditorPreloader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditorPreloader.swift; sourceTree = "<group>"; };
 		877A6D7F2C77248A001EC516 /* NSPopover+Extension.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NSPopover+Extension.swift"; sourceTree = "<group>"; };
 		877B965C2C63815000186414 /* AppHotKeys.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppHotKeys.swift; sourceTree = "<group>"; };
 		877D77C92DFA76E50086180B /* AppDesign.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDesign.swift; sourceTree = "<group>"; };
@@ -250,6 +257,10 @@
 		87F2B61329AF2F3A0027103E /* NSSpellChecker+Extension.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "NSSpellChecker+Extension.swift"; sourceTree = "<group>"; };
 		87FAFFD62BE0B6A300FA509D /* AppDelegate+FileSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppDelegate+FileSystem.swift"; sourceTree = "<group>"; };
 		B0E02F672D8F77A50060DEA5 /* MarkEdit.sdef */ = {isa = PBXFileReference; lastKnownFileType = text; path = MarkEdit.sdef; sourceTree = "<group>"; };
+		CC000002300000000000001B /* EditorDocument+ClosedTab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "EditorDocument+ClosedTab.swift"; sourceTree = "<group>"; };
+		CC000003300000000000001B /* AppDelegate+ClosedTab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppDelegate+ClosedTab.swift"; sourceTree = "<group>"; };
+		CC000004300000000000001B /* EditorSelectionHistory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditorSelectionHistory.swift; sourceTree = "<group>"; };
+		CC000006300000000000001B /* EditorClosedTabHistory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditorClosedTabHistory.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -263,6 +274,7 @@
 				87CC48FD29CC01E100BE1441 /* TextBundle in Frameworks */,
 				87B3ED8F2CBE1E12001FA6CE /* DiffKit in Frameworks */,
 				8701D0A42CC12321006AF8C2 /* FileVersion in Frameworks */,
+				CC000020300000000000FD01 /* FileDrop in Frameworks */,
 				8775A77B29867012005867BF /* FontPicker in Frameworks */,
 				870F17922985775B00003DA7 /* Previewer in Frameworks */,
 				874823CE29B0BD980067EC49 /* TextCompletion in Frameworks */,
@@ -363,6 +375,9 @@
 				87D7F0202DE8724A00985ABF /* EditorImageLoader.swift */,
 				8790B6EB297036B2000DFC1A /* EditorWindow.swift */,
 				870A51B5294702AF0095C7EB /* EditorWindowController.swift */,
+				8763C31E2F92574900A3841D /* EditorHistoryStorage.swift */,
+				CC000006300000000000001B /* EditorClosedTabHistory.swift */,
+				CC000004300000000000001B /* EditorSelectionHistory.swift */,
 			);
 			path = Editor;
 			sourceTree = "<group>";
@@ -418,6 +433,7 @@
 				87FAFFD62BE0B6A300FA509D /* AppDelegate+FileSystem.swift */,
 				871C995C2973F20E003FF3A7 /* AppDelegate+Menu.swift */,
 				871C995A2973F1E6003FF3A7 /* AppDelegate+Document.swift */,
+				CC000003300000000000001B /* AppDelegate+ClosedTab.swift */,
 			);
 			path = Application;
 			sourceTree = "<group>";
@@ -581,7 +597,8 @@
 			isa = PBXGroup;
 			children = (
 				870A51B8294702AF0095C7EB /* EditorDocument.swift */,
-				8772E384294AC60D00111E83 /* EditorReusePool.swift */,
+				CC000002300000000000001B /* EditorDocument+ClosedTab.swift */,
+				8772E384294AC60D00111E83 /* EditorPreloader.swift */,
 				8725E07F2977EEB3006A4961 /* EditorToolbarItems.swift */,
 				878AABE82CB111410081C5E1 /* EditorMenuItem.swift */,
 			);
@@ -642,6 +659,7 @@
 				8790ABDA2A98FF610083825C /* Statistics */,
 				87B3ED8E2CBE1E12001FA6CE /* DiffKit */,
 				8701D0A32CC12321006AF8C2 /* FileVersion */,
+				CC000020300000000000FD02 /* FileDrop */,
 			);
 			productName = MarkEdit;
 			productReference = 870A51A2294700DE0095C7EB /* MarkEdit.app */;
@@ -775,6 +793,7 @@
 				87B3ED5D2CBCADD6001FA6CE /* NSDocumentController+Extension.swift in Sources */,
 				874BE70E29BB73CA002F83BA /* UpdateFileContentIntent.swift in Sources */,
 				8780AC202982A2DD00065EF4 /* WindowSettingsView.swift in Sources */,
+				8763C3202F92574D00A3841D /* EditorHistoryStorage.swift in Sources */,
 				87BD071229699A290053EF5F /* EditorViewController+Preview.swift in Sources */,
 				878B7B9A2CE0DA8A00220F39 /* EditorViewController+FileVersion.swift in Sources */,
 				873D6402295FCC3E0095DEF7 /* AppResources.swift in Sources */,
@@ -785,7 +804,7 @@
 				87BDF6E42976C97100548079 /* EditorViewController+GotoLine.swift in Sources */,
 				874BE6FB29BB5804002F83BA /* AppIntent+Extension.swift in Sources */,
 				87F2B5F429ACF56E0027103E /* EditorViewController+Completion.swift in Sources */,
-				8772E385294AC60D00111E83 /* EditorReusePool.swift in Sources */,
+				8772E385294AC60D00111E83 /* EditorPreloader.swift in Sources */,
 				8709C69E29B4412F009EABB5 /* AssistantSettingsView.swift in Sources */,
 				877A6D802C77248A001EC516 /* NSPopover+Extension.swift in Sources */,
 				874BE70229BB5889002F83BA /* GetFileContentIntent.swift in Sources */,
@@ -801,6 +820,7 @@
 				8729C5A6294B5E6B006F262B /* EditorViewController+Menu.swift in Sources */,
 				87AAEDF7295825D800C8E61C /* EditorFindPanel+Delegate.swift in Sources */,
 				871C995B2973F1E6003FF3A7 /* AppDelegate+Document.swift in Sources */,
+				CC000003300000000000001A /* AppDelegate+ClosedTab.swift in Sources */,
 				87E2141A2DE4A8400082DDB1 /* NSMenu+Extension.swift in Sources */,
 				87AAEE0229585ADC00C8E61C /* AppPreferences.swift in Sources */,
 				8723B46929C0A6EA0013D5D5 /* EvaluateJavaScriptIntent.swift in Sources */,
@@ -811,6 +831,8 @@
 				87091B9A2A963C6B00F5EF0D /* EditorTextInput.swift in Sources */,
 				87850C8629482A8600D1A952 /* NSApplication+Extension.swift in Sources */,
 				87BB5A2C2E929BAA00A17C14 /* AppExceptionCatcher.swift in Sources */,
+				CC000004300000000000001A /* EditorSelectionHistory.swift in Sources */,
+				CC000006300000000000001A /* EditorClosedTabHistory.swift in Sources */,
 				8767BBB1295A8C1D00BFACAE /* EditorViewController+Delegate.swift in Sources */,
 				87DE081B294DDA49004AD33A /* AppTheme.swift in Sources */,
 				870F17682985285B00003DA7 /* EditorViewController+Config.swift in Sources */,
@@ -837,6 +859,7 @@
 				8765FD292AF291D300C645A8 /* AppVersion.swift in Sources */,
 				874BE70829BB62BA002F83BA /* CreateNewDocumentIntent.swift in Sources */,
 				870A51BD294702AF0095C7EB /* EditorDocument.swift in Sources */,
+				CC000002300000000000001A /* EditorDocument+ClosedTab.swift in Sources */,
 				8780AC182982554800065EF4 /* SettingTabs.swift in Sources */,
 				87B3ED5A2CBCA97D001FA6CE /* AppDocumentController.swift in Sources */,
 				87F2B61429AF2F3A0027103E /* NSSpellChecker+Extension.swift in Sources */,
@@ -1358,6 +1381,10 @@
 		87EB9900295755DA00A56B97 /* MarkEditCore */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = MarkEditCore;
+		};
+		CC000020300000000000FD02 /* FileDrop */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = FileDrop;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

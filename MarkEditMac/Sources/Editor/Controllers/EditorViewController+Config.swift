@@ -12,7 +12,7 @@ import MarkEditKit
 
 extension EditorViewController {
   func setTheme(_ theme: AppTheme, animated: Bool) {
-    guard animated else {
+    guard animated && !AppDesign.reduceMotion else {
       return setTheme(theme)
     }
 
@@ -46,8 +46,8 @@ extension EditorViewController {
 
     // Also update windows that inherit appearance from the editor
     completionContext.appearance = resolvedAppearance
-    NSApp.windows.compactMap { $0 as? GotoLineWindow }.forEach {
-      $0.appearance = resolvedAppearance
+    for case let window as GotoLineWindow in NSApp.windows {
+      window.appearance = resolvedAppearance
     }
   }
 

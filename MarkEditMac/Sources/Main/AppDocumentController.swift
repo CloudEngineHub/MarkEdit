@@ -17,24 +17,33 @@ final class AppDocumentController: NSDocumentController {
   static var suggestedTextEncoding: EditorTextEncoding?
   static var suggestedFilename: String?
 
+  override var maximumRecentDocumentCount: Int {
+    8
+  }
+
   override func beginOpenPanel(_ openPanel: NSOpenPanel, forTypes inTypes: [String]?) async -> Int {
     if let defaultDirectory = AppRuntimeConfig.defaultOpenDirectory {
       setOpenPanelDirectory(defaultDirectory)
     }
 
-    openPanel.accessoryView = EditorSaveOptionsView.wrapper(for: .openPanel) { [weak openPanel] result in
-      switch result {
-      case .textEncoding(let value):
-        Self.suggestedTextEncoding = value
-      case .showHiddenFiles(let value):
-        openPanel?.showsHiddenFiles = value
-      default:
-        Logger.assertFail("Invalid change: \(result)")
+    if AppRuntimeConfig.disableOpenPanelOptions {
+      openPanel.accessoryView = nil
+    } else {
+      openPanel.accessoryView = EditorSaveOptionsView.wrapper(for: .openPanel) { [weak openPanel] result in
+        switch result {
+        case .textEncoding(let value):
+          Self.suggestedTextEncoding = value
+        case .showHiddenFiles(let value):
+          openPanel?.showsHiddenFiles = value
+        default:
+          Logger.assertFail("Invalid change: \(result)")
+        }
       }
     }
 
     Self.suggestedTextEncoding = nil
     openPanel.showsHiddenFiles = AppPreferences.General.showHiddenFiles
+    openPanel.relayoutAccessoryView()
 
     return await super.beginOpenPanel(openPanel, forTypes: inTypes)
   }
@@ -53,8 +62,13 @@ final class AppDocumentController: NSDocumentController {
       }
 
       // Ignore the default opening logic
-      completionHandler(nil, false, nil)
-    } else {
+      return completionHandler(nil, false, nil)
+    }
+
+    Task { @MainActor in
+      // Ensure the preloader has a fully loaded editor before opening the document
+      await EditorPreloader.shared.prepareViewController()
+
       super.openDocument(
         withContentsOf: url,
         display: displayDocument,
@@ -66,5 +80,16 @@ final class AppDocumentController: NSDocumentController {
   override func saveAllDocuments(_ sender: Any?) {
     // The default implementation doesn't work
     documents.forEach { $0.save(sender) }
+  }
+}
+
+// MARK: - Private
+
+private extension NSOpenPanel {
+  /// Re-layouts the accessory view to work around internal AppKit bugs.
+  ///
+  /// For example, the animation of opening documents will sometimes be skipped.
+  func relayoutAccessoryView() {
+    accessoryView?.needsLayout = true
   }
 }

@@ -1,9 +1,8 @@
-import { Decoration, highlightTrailingWhitespace } from '@codemirror/view';
+import { Decoration, MatchDecorator, highlightTrailingWhitespace } from '@codemirror/view';
 import { syntaxTree } from '@codemirror/language';
 import { NodeType } from '@lezer/common';
 import { InvisiblesBehavior } from '../../config';
 import { calculateFontSize } from './heading';
-import { createMarkDeco } from '../matchers/regex';
 import { createDecoPlugin } from '../helper';
 import { isPositionFolded } from './gutter';
 import { selectedVisiblesDecoration } from './selection';
@@ -79,34 +78,40 @@ export function renderWhitespaceBeforeCaret() {
 // In Markdown rendering, we have different font sizes for headers,
 // we need to figure out proper font size and set it to the pseudo class.
 function renderInvisibles(regexp: RegExp, selectionOnly: boolean) {
-  return createDecoPlugin(() => createMarkDeco(regexp, (match, pos) => {
-    // If it's for selection only and the position is not in any selection,
-    // we won't show the invisible.
-    if (shouldIgnorePosition(pos, selectionOnly)) {
-      return null;
-    }
+  const matcher = new MatchDecorator({
+    regexp,
+    boundary: /\S/,
+    decoration: (match, _view, pos) => {
+      // If it's for selection only and the position is not in any selection,
+      // we won't show the invisible.
+      if (shouldIgnorePosition(pos, selectionOnly)) {
+        return null;
+      }
 
-    // If we always show invisibles and just inserted a whitespace, we skip drawing in this render pass.
-    //
-    // The reason behind this is that <span> elements created for invisibles can break autocorrect features,
-    // we will redraw the skipped whitespace in renderWhitespaceBeforeCaret.
-    const invisible = match[0];
-    if (
-      (alwaysRenderInvisibles()) &&
-      (invisible === ' ') &&
-      (Date.now() - storage.spaceInsertedTime < typingInterval) &&
-      (pos === caretTextPosition() - 1)
-    ) {
-      return null;
-    }
+      // If we always show invisibles and just inserted a whitespace, we skip drawing in this render pass.
+      //
+      // The reason behind this is that <span> elements created for invisibles can break autocorrect features,
+      // we will redraw the skipped whitespace in renderWhitespaceBeforeCaret.
+      const invisible = match[0];
+      if (
+        (alwaysRenderInvisibles()) &&
+        (invisible === ' ') &&
+        (Date.now() - storage.spaceInsertedTime < typingInterval) &&
+        (pos === caretTextPosition() - 1)
+      ) {
+        return null;
+      }
 
-    // Disable decoration for empty rendering
-    if (invisible === ' ' && window.config.visibleWhitespaceCharacter === '') {
-      return null;
-    }
+      // Disable decoration for empty rendering
+      if (invisible === ' ' && window.config.visibleWhitespaceCharacter === '') {
+        return null;
+      }
 
-    return getOrCreateDeco(invisible, pos);
-  }));
+      return getOrCreateDeco(invisible, pos);
+    },
+  });
+
+  return createDecoPlugin(() => matcher.createDeco(window.editor));
 }
 
 function renderLineBreaks(selectionOnly: boolean) {
@@ -187,7 +192,7 @@ function getOrCreateDeco(invisible: string, pos: number) {
   return newDeco;
 }
 
-// https://github.com/codemirror/lang-markdown/blob/main/src/markdown.ts
+// https://code.haverbeke.berlin/codemirror/lang-markdown/src/branch/main/src/markdown.ts
 function headingLevel(type: NodeType) {
   const match = /^(?:ATX|Setext)Heading(\d)$/.exec(type.name);
   return match ? +match[1] : 0;

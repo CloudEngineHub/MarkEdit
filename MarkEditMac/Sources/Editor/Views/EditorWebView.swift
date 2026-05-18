@@ -6,6 +6,7 @@
 //
 
 import WebKit
+import AppKitExtensions
 import MarkEditKit
 
 /**
@@ -23,7 +24,7 @@ enum WKContextMenuItemTag: Int {
   case copyLinkWithHighlight = 102
 
   /**
-   Customized item that shows the search operations.
+   Customized item that shows the search actions.
    */
   case searchMenu = 0xbadbabe
 }
@@ -36,10 +37,11 @@ enum EditorWebViewMenuAction {
 @MainActor
 protocol EditorWebViewActionDelegate: AnyObject {
   func editorWebViewIsReadOnlyMode(_ webView: EditorWebView) -> Bool
-  func editorWebViewSearchOperationsMenuItem(_ webView: EditorWebView) -> NSMenuItem?
+  func editorWebViewSearchActionsMenuItem(_ webView: EditorWebView) -> NSMenuItem?
   func editorWebViewResignFirstResponder(_ webView: EditorWebView)
   func editorWebView(_ webView: EditorWebView, mouseDownWith event: NSEvent)
   func editorWebView(_ webView: EditorWebView, didSelect menuAction: EditorWebViewMenuAction)
+  func editorWebView(_ webView: EditorWebView, didDrop fileURLs: [URL])
 
   func editorWebView(
     _ webView: EditorWebView,
@@ -106,8 +108,8 @@ final class EditorWebView: WKWebView {
       return true
     }
 
-    // Operations like select all in selection, replace all in selection, etc
-    if let searchMenuItem = actionDelegate?.editorWebViewSearchOperationsMenuItem(self) {
+    // Actions like select all in selection, replace all in selection, etc
+    if let searchMenuItem = actionDelegate?.editorWebViewSearchActionsMenuItem(self) {
       menu.insertItem(searchMenuItem, at: 0)
       menu.insertItem(.separator(), at: 1)
     }
@@ -150,6 +152,27 @@ final class EditorWebView: WKWebView {
     DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
       self.updateMenuItems(menu: menu)
     }
+  }
+
+  override func performDragOperation(_ sender: any NSDraggingInfo) -> Bool {
+    // Let WebKit handle internal text drags
+    guard !(sender.draggingSource is WKWebView) else {
+      return super.performDragOperation(sender)
+    }
+
+    // Ignore placeholder file URLs (e.g. `file://`, unresolved promise drags) that
+    // would otherwise produce nonsensical links like `[](../../..)`.
+    let fileURLs = (sender.draggingPasteboard.fileURLs ?? []).filter { url in
+      !url.lastPathComponent.isEmpty && url.lastPathComponent != "/"
+    }
+
+    guard !fileURLs.isEmpty else {
+      return super.performDragOperation(sender)
+    }
+
+    // Forward sensible file drop requests
+    actionDelegate?.editorWebView(self, didDrop: fileURLs)
+    return true
   }
 
   override func resignFirstResponder() -> Bool {

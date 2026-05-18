@@ -34,7 +34,7 @@ const sharedStyles: { [selector: string]: StyleSpec } = {
     caretColor: 'transparent',
   },
   // Mimic the macOS Sonoma rounded caret
-  '.cm-cursor': {
+  '.cm-cursor, .cm-dropCursor': {
     borderLeftWidth: '2px',
     borderRadius: '1px',
   },
@@ -163,7 +163,8 @@ function buildTheme(colors: EditorColors, scheme?: ColorScheme) {
       backgroundColor: colors.searchMatch,
     },
     '.cm-searchMatch.cm-searchMatch-selected': {
-      boxShadow: '0px 0px 2px 1px rgba(0, 0, 0, 0.2)',
+      borderRadius: '2px',
+      boxShadow: '0px 0px 0px 2px #ffff00, 0px 0px 3px 2px rgba(0, 0, 0, 0.4)',
     },
     '.cm-searchMatch-selected, .cm-searchMatch-selected *': {
       color: '#000000 !important',

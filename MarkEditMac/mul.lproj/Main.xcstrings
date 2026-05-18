@@ -3219,6 +3219,30 @@
         }
       }
     },
+    "rct-Cm-ShT.title" : {
+      "comment" : "Class = \"NSMenuItem\"; title = \"Reopen Closed Tab\"; ObjectID = \"rct-Cm-ShT\";",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Reopen Closed Tab"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "重新打开关闭的标签"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "重新開啟關閉的標籤"
+          }
+        }
+      }
+    },
     "REb-f5-kpc.title" : {
       "comment" : "Class = \"NSMenuItem\"; title = \"Table of Contents\"; ObjectID = \"REb-f5-kpc\";",
       "extractionState" : "extracted_with_value",

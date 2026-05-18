@@ -8,12 +8,13 @@ import { isMetaKeyDown } from '../../modules/events';
 import { getNodesNamed } from '../../modules/lezer';
 import { getTableOfContents, getLinkAnchor, gotoHeader } from '../../modules/toc';
 
-const className = 'cm-md-link';
-const regexp = {
-  standard: /[a-zA-Z][a-zA-Z0-9+.-]*:\/\/\/?([a-zA-Z0-9-]+\.)?[-a-zA-Z0-9@:%._+~#=]+(\.[a-z]+)?\b([-a-zA-Z0-9@:%._+~#=?&//]*)|(\[[^\]]*\]\()([^)]+(?:\)[^)]+)*)\)|(<[^>]*\b(?:src|srcset|href|poster)\s*=\s*["'])([^"']*)["']/gi,
+export const regexp = {
+  standard: /[a-zA-Z][a-zA-Z0-9+.-]*:\/\/\/?([a-zA-Z0-9-]+\.)?[-a-zA-Z0-9@:%._+~#=]+(\.[a-z]+)?\b([-a-zA-Z0-9@:%._+~#=?&/]*)|(\[(?:\\.|[^\]\\])*\]\()([^()\s]+(?:\([^()]*\)[^()\s]*)*)(?:\s+["'][^"'\n]*["'])?\)|(<[^>]*\b(?:src|srcset|href|poster)\s*=\s*["'])([^"']*)["']/gi,
   footnote: /^\[\^[^\]]+\]$/,
-  reference: /^\[[^\]]+\] ?\[([^\]]+)\]$/,
+  reference: /^\[(?:\\.|[^\]\\])+\]\s*\[((?:\\.|[^\]\\])+)\]$/,
 };
+
+const className = 'cm-md-link';
 
 declare global {
   interface Window {
@@ -25,42 +26,41 @@ declare global {
 window._startLinkClickable = (event: MouseEvent) => startClickable(event.target as HTMLElement, event.metaKey);
 window._stopLinkClickable = (event: MouseEvent) => stopClickable(event.target as HTMLElement);
 
+// Fragile approach, but we only use it for link clicking, it should be fine.
+// The matcher is created once so it isn't reconstructed on every view update.
+const standardMatcher = new MatchDecorator({
+  regexp: regexp.standard,
+  boundary: /\S/,
+  decorate: (add, from, to, match) => {
+    const createDeco = (attributes?: { [key: string]: string }) => {
+      return Decoration.mark(createSpec(attributes));
+    };
+
+    // HTML links, only decorate the url part
+    if (match[6]) {
+      return add(from + match[6].length, to - 1, createDeco());
+    }
+
+    // Markdown links
+    if (match[4]) {
+      // Decorate the full match and add the url as an attribute
+      if (match[5]) {
+        return add(from, to, createDeco({ 'data-link-url': match[5] }));
+      }
+
+      // Usually speaking, this should not happen
+      return add(from + match[4].length, to - 1, createDeco());
+    }
+
+    // Normal links, decorate the full match
+    add(from, to, createDeco());
+  },
+});
+
 /**
  * For standard links like `https://github.com` and `[markdown][link]`.
  */
-const standardStyle = createDecoPlugin(() => {
-  const matcher = new MatchDecorator({
-    // Fragile approach, but we only use it for link clicking, it should be fine
-    regexp: regexp.standard,
-    boundary: /\S/,
-    decorate: (add, from, to, match) => {
-      const createDeco = (attributes?: { [key: string]: string }) => {
-        return Decoration.mark(createSpec(attributes));
-      };
-
-      // HTML links, only decorate the url part
-      if (match[6]) {
-        return add(from + match[6].length, to - 1, createDeco());
-      }
-
-      // Markdown links
-      if (match[4]) {
-        // Decorate the full match and add the url as an attribute
-        if (match[5]) {
-          return add(from, to, createDeco({ 'data-link-url': match[5] }));
-        }
-
-        // Usually speaking, this should not happen
-        return add(from + match[4].length, to - 1, createDeco());
-      }
-
-      // Normal links, decorate the full match
-      add(from, to, createDeco());
-    },
-  });
-
-  return matcher.createDeco(window.editor);
-});
+const standardStyle = createDecoPlugin(() => standardMatcher.createDeco(window.editor));
 
 /**
  * For `[^footnote]` and `[reference][link]`.
@@ -106,20 +106,30 @@ export function startClickable(inputElement?: HTMLElement, metaKeyPressed = isMe
     return;
   }
 
-  linkElement.title = '';
-  linkElement.style.cursor = 'pointer';
-  linkElement.style.textDecoration = 'underline';
+  // Delay activation slightly so quickly sweeping the mouse over links
+  // (or briefly tapping cmd) doesn't flash the clickable styling.
+  clearActivationTimer();
+  storage.activationTimer = setTimeout(() => {
+    if (storage.focusedElement !== linkElement || !isMetaKeyDown()) {
+      return;
+    }
 
-  // Find the actual text node and use its color
-  const text = [...linkElement.children].find(node => (node.textContent as string | null) !== null);
-  if (text !== undefined) {
-    linkElement.style.textDecorationColor = getComputedStyle(text).color;
-  }
+    linkElement.title = '';
+    linkElement.style.cursor = 'pointer';
+    linkElement.style.textDecoration = 'underline';
+
+    // Find the actual text node and use its color
+    const text = [...linkElement.children].find(node => (node.textContent as string | null) !== null);
+    if (text !== undefined) {
+      linkElement.style.textDecorationColor = getComputedStyle(text).color;
+    }
+  }, 150);
 }
 
 export function stopClickable(inputElement?: HTMLElement) {
   const linkElement = inputElement ?? storage.focusedElement;
   storage.focusedElement = inputElement ? undefined : storage.focusedElement;
+  clearActivationTimer();
 
   if (linkElement === undefined) {
     return;
@@ -164,6 +174,13 @@ export function handleMouseUp(event: MouseEvent) {
   }
 }
 
+function clearActivationTimer() {
+  if (storage.activationTimer !== undefined) {
+    clearTimeout(storage.activationTimer);
+    storage.activationTimer = undefined;
+  }
+}
+
 function extractLink(target: EventTarget | null) {
   const selector = `.${className}`;
   const element = (target as HTMLElement | null)?.closest<HTMLElement>(selector);
@@ -181,7 +198,7 @@ function extractLink(target: EventTarget | null) {
 
   // It's OK to have a trailing period in a valid url,
   // but generally it's the end of a sentence and we want to remove the period.
-  const link = element.dataset.linkUrl ?? element.innerText;
+  const link = element.dataset.linkUrl ?? (element.textContent as string | null) ?? '';
   if (link.endsWith('.') === true && link.endsWith('..') !== true) {
     return { element, link: link.slice(0, -1) };
   }
@@ -252,6 +269,8 @@ function scrollIntoTarget(target?: SyntaxNodeRef) {
 
 const storage: {
   focusedElement: HTMLElement | undefined;
+  activationTimer: ReturnType<typeof setTimeout> | undefined;
 } = {
   focusedElement: undefined,
+  activationTimer: undefined,
 };

@@ -33,6 +33,7 @@ enum AppRuntimeConfig {
     let autoCharacterPairs: Bool?
     let autoSaveWhenIdle: Bool?
     let closeAlwaysConfirmsChanges: Bool?
+    let restoreLastSelection: Bool?
     let indentBehavior: EditorIndentBehavior?
     let writingToolsBehavior: String?
     let headerFontSizeDiffs: [Double]?
@@ -47,7 +48,9 @@ enum AppRuntimeConfig {
     let checksForUpdates: Bool? // [Deprecated] Kept for backward compatibility
     let defaultOpenDirectory: String?
     let defaultSaveDirectory: String?
+    let disableOpenPanelOptions: Bool?
     let disableCorsRestrictions: Bool?
+    let disabledWebKitFeatures: [String]?
     let preferredTerminalApp: String?
     let mainWindowHotKey: HotKey?
 
@@ -55,6 +58,7 @@ enum AppRuntimeConfig {
       case autoCharacterPairs = "editor.autoCharacterPairs"
       case autoSaveWhenIdle = "editor.autoSaveWhenIdle"
       case closeAlwaysConfirmsChanges = "editor.closeAlwaysConfirmsChanges"
+      case restoreLastSelection = "editor.restoreLastSelection"
       case indentBehavior = "editor.indentBehavior"
       case writingToolsBehavior = "editor.writingToolsBehavior"
       case headerFontSizeDiffs = "editor.headerFontSizeDiffs"
@@ -69,7 +73,9 @@ enum AppRuntimeConfig {
       case checksForUpdates = "general.checksForUpdates"
       case defaultOpenDirectory = "general.defaultOpenDirectory"
       case defaultSaveDirectory = "general.defaultSaveDirectory"
+      case disableOpenPanelOptions = "general.disableOpenPanelOptions"
       case disableCorsRestrictions = "general.disableCorsRestrictions"
+      case disabledWebKitFeatures = "general.disabledWebKitFeatures"
       case preferredTerminalApp = "general.preferredTerminalApp"
       case mainWindowHotKey = "general.mainWindowHotKey"
     }
@@ -78,7 +84,7 @@ enum AppRuntimeConfig {
   static let jsonLiteral: String = {
     {
       guard let fileData, (try? JSONSerialization.jsonObject(with: fileData, options: [])) != nil else {
-        Logger.assertFail("Invalid json file was found at: \(AppCustomization.settings.fileURL)")
+        Logger.log(.error, "Invalid json file was found at: \(AppCustomization.settings.fileURL)")
         return nil
       }
 
@@ -92,6 +98,11 @@ enum AppRuntimeConfig {
     }
 
     return (object as? [String: Any]) ?? [:]
+  }
+
+  static var restoreLastSelection: Bool {
+    // Restore selection from previous session by default
+    currentDefinition?.restoreLastSelection ?? true
   }
 
   static var autoCharacterPairs: Bool {
@@ -178,9 +189,18 @@ enum AppRuntimeConfig {
     currentDefinition?.defaultSaveDirectory
   }
 
+  static var disableOpenPanelOptions: Bool {
+    currentDefinition?.disableOpenPanelOptions ?? defaultDisableOpenPanelOptions
+  }
+
   static var disableCorsRestrictions: Bool {
     // Enforce CORS restrictions by default
     currentDefinition?.disableCorsRestrictions ?? false
+  }
+
+  static var disabledWebKitFeatures: [String] {
+    // No extra WKPreferences feature flags disabled by default
+    currentDefinition?.disabledWebKitFeatures ?? []
   }
 
   static var preferredTerminalApp: String? {
@@ -229,6 +249,7 @@ private extension AppRuntimeConfig {
     autoCharacterPairs: true,
     autoSaveWhenIdle: false,
     closeAlwaysConfirmsChanges: nil,
+    restoreLastSelection: nil,
     indentBehavior: .never,
     writingToolsBehavior: nil, // [macOS 15] Complete mode still has lots of bugs
     headerFontSizeDiffs: nil,
@@ -243,19 +264,21 @@ private extension AppRuntimeConfig {
     checksForUpdates: nil,
     defaultOpenDirectory: nil,
     defaultSaveDirectory: nil,
+    disableOpenPanelOptions: defaultDisableOpenPanelOptions,
     disableCorsRestrictions: nil,
+    disabledWebKitFeatures: nil,
     preferredTerminalApp: nil,
     mainWindowHotKey: .init(key: "M", modifiers: ["Shift", "Command", "Option"])
   )
 
   static let currentDefinition: Definition? = {
     guard let fileData else {
-      Logger.assertFail("Missing settings.json to proceed")
+      Logger.log(.error, "Missing settings.json to proceed")
       return nil
     }
 
     guard let definition = try? JSONDecoder().decode(Definition.self, from: fileData) else {
-      Logger.assertFail("Invalid json object was found: \(fileData)")
+      Logger.log(.error, "Invalid json object was found: \(fileData)")
       return nil
     }
 
@@ -270,5 +293,14 @@ private extension AppRuntimeConfig {
     Logger.assert(jsonData != nil, "Failed to encode object: \(definition)")
 
     return jsonData
+  }
+
+  static var defaultDisableOpenPanelOptions: Bool {
+    // [macOS 26] Revisit this later, NSOpenPanel.accessoryView can significantly slow down the file opening process
+    if #available(macOS 26.0, *) {
+      return true
+    }
+
+    return false
   }
 }

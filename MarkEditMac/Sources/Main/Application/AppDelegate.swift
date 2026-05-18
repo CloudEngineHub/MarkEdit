@@ -56,7 +56,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
   private var settingsWindowController: NSWindowController?
 
   func applicationWillFinishLaunching(_ notification: Notification) {
-    EditorReusePool.shared.warmUp()
+    EditorPreloader.shared.warmUp()
   }
 
   func applicationDidFinishLaunching(_ notification: Notification) {
@@ -105,10 +105,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
       }
     }
 
-    // Check for updates on a weekly basis, for users who never quit apps
+    // Periodic maintenance: runs weekly for users who keep the app running
     Timer.scheduledTimer(withTimeInterval: 7 * 24 * 60 * 60, repeats: true) { _ in
       Task {
         await AppUpdater.checkForUpdates(explicitly: false)
+      }
+
+      Task {
+        await EditorSelectionHistory.purgeStaleEntries()
       }
     }
 
@@ -128,6 +132,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     return .terminateNow
+  }
+
+  func applicationWillTerminate(_ notification: Notification) {
+    EditorSelectionHistory.purgeStaleEntries()
   }
 
   func shouldOpenOrCreateDocument() -> Bool {
@@ -158,6 +166,18 @@ extension AppDelegate {
         break
       }
     }
+  }
+}
+
+// MARK: - NSMenuItemValidation
+
+extension AppDelegate: NSMenuItemValidation {
+  func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
+    if menuItem.action == #selector(reopenClosedTab(_:)) {
+      return EditorClosedTabHistory.shared.hasEntries
+    }
+
+    return true
   }
 }
 

@@ -7,10 +7,6 @@
 import WebKit
 import MarkEditCore
 
-/**
- WKWebView extension to show inspector programmatically.
- */
-
 public extension WKWebView {
   func evaluateJavaScript(
     _ script: String,
@@ -65,7 +61,11 @@ extension WKWebView {
     completion: ((Result<Void, InvokeError>) -> Void)? = nil
   ) {
     let script = script(for: path, message: message)
-    evaluateJavaScript(script) { _, error in
+    evaluateJavaScript(script) { [weak self] _, error in
+      guard self != nil else {
+        return
+      }
+
       if let error {
         Logger.log(.error, error.localizedDescription)
         completion?(.failure(.evaluateError(path: path, error: error)))
@@ -77,13 +77,18 @@ extension WKWebView {
 
   func invoke<SuccessResult: Decodable>(
     path: String,
-    message: Encodable = Message()
+    message: Encodable = Message(),
+    callAsync: Bool = false
   ) async throws -> SuccessResult {
     let script = script(for: path, message: message)
     let value: Any?
 
     do {
-      value = try await evaluateJavaScript(script)
+      if callAsync {
+        value = try await callAsyncJavaScript("return await \(script)", contentWorld: .page)
+      } else {
+        value = try await evaluateJavaScript(script)
+      }
     } catch {
       Logger.log(.error, error.localizedDescription)
       throw InvokeError.evaluateError(path: path, error: error)

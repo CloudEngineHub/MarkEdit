@@ -12,7 +12,7 @@ import FontPicker
 // MARK: - NSMenu Creation
 
 extension EditorViewController {
-  var searchOperationsMenuItem: NSMenuItem? {
+  var searchActionsMenuItem: NSMenuItem? {
     guard findPanel.mode != .hidden else {
       return nil
     }
@@ -39,7 +39,7 @@ extension EditorViewController {
       self?.performSearchOperation(.replaceAllInSelection)
     }.isEnabled = canReplace
 
-    let item = NSMenuItem(title: Localized.Search.searchOperations)
+    let item = NSMenuItem(title: Localized.Search.searchActions)
     item.tag = WKContextMenuItemTag.searchMenu.rawValue
     item.submenu = menu
     return item
@@ -359,9 +359,11 @@ private extension EditorViewController {
     // just temporarily overwrite the mode to preferred and switch back later.
     let tabbingMode = AppPreferences.Window.tabbingMode
     AppPreferences.Window.tabbingMode = .preferred
+    view.window?.tabbingMode = .preferred
 
     NSDocumentController.shared.newDocument(sender)
     AppPreferences.Window.tabbingMode = tabbingMode
+    view.window?.tabbingMode = tabbingMode
   }
 
   @IBAction func revealInFinder(_ sender: Any?) {
